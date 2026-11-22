@@ -68,7 +68,7 @@ def main():
 
     df = pd.DataFrame(tous_les_produits)
     display_books(df)
-    # save_all_books(df)
+    save_all_books(df)
 
 
 if __name__ == "__main__":
