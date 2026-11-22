@@ -60,9 +60,10 @@ def main():
 
 
         for article in articles:
-            # print(f"\n____article____: {extraire_livre(article, numero_page)}")
-            tous_les_produits.append(extraire_livre(article, numero_page))
-
+            livre = extraire_livre(article, numero_page)
+            tous_les_produits.append(livre)
+            print(f"\n {livre}")
+            
         time.sleep(0.5)
 
     df = pd.DataFrame(tous_les_produits)
