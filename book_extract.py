@@ -9,40 +9,66 @@ header = {
     'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
 }
 
-tous_les_produits = []
 
-for numero_page in range(1, 51):
-    url = f'https://books.toscrape.com/catalogue/page-{numero_page}.html'
-    print(f"On scrape la page {numero_page}/50...")
-    
-    response = requests.get(url, headers=header, timeout=30)
-    response.encoding = 'utf-8'  # <-- CORRECTION 1
-    soup = BeautifulSoup(response.text, 'html.parser')
-    articles = soup.find_all('article', class_='product_pod')
-    
-    if len(articles) == 0:
-        print("Plus d'articles, on s'arrête")
-        break
+def find_articles(url, tag_name='article', class_name='product_pod', parser='html.parser', timeout=30):
+    """EXTRACT : télécharge une page et renvoie la liste des articles (vide si aucun)."""
+    response = requests.get(url, headers=header, timeout=timeout)
+    response.encoding = 'utf-8'  # <-- CORRECTION 1 : sinon '£' devient 'Â£'
+    soup = BeautifulSoup(response.text, parser)
+    return soup.find_all(tag_name, class_=class_name)
 
-    for article in articles:
-        nom = article.find('h3').find('a')['title']
-        prix_texte = article.find('p', class_='price_color').get_text(strip=True)
-        prix_nombre = float(re.sub(r'[^0-9.]', '', prix_texte))  # <-- CORRECTION 2
-        note = article.find('p', class_='star-rating')['class'][1]
-        dispo = article.find('p', class_='instock availability').get_text(strip=True)
 
-        tous_les_produits.append({
-            'Nom': nom, 
-            'Prix': prix_nombre, 
-            'Note': note,
-            'Dispo': dispo,
-            'Page': numero_page
-        })
-    
-    time.sleep(0.5)
+def extraire_livre(article, numero_page):
+    """TRANSFORM : transforme un <article> HTML en dictionnaire propre."""
+    prix_texte = article.find('p', class_='price_color').get_text(strip=True)
+    return {
+        'Nom': article.find('h3').find('a')['title'],
+        'Prix': float(re.sub(r'[^0-9.]', '', prix_texte)),  # <-- CORRECTION 2
+        'Note': article.find('p', class_='star-rating')['class'][1],
+        'Dispo': article.find('p', class_='instock availability').get_text(strip=True),
+        'Page': numero_page,
+    }
 
-df = pd.DataFrame(tous_les_produits)
-print(f"TOTAL : {len(df)} livres extraits")
-print(df.head())
-df.to_csv('tous_les_livres.csv', index=False, encoding='utf-8')
-print("Sauvegardé !")
+
+def display_books(df):
+    """Affiche le nombre de livres et les premières lignes."""
+    if df.empty:
+        print("Aucun livre à afficher")
+        return
+    print(f"TOTAL : {len(df)} livres extraits")
+    print(df.head())
+
+
+def save_all_books(df, filename='tous_les_livres.csv', encoding='utf-8'):
+    """LOAD : enregistre le DataFrame dans un fichier CSV."""
+    df.to_csv(filename, index=False, encoding=encoding)
+    print(f"Sauvegardé dans {filename} !")
+
+
+def main():
+    TOTAL_PAGES = 50
+    tous_les_produits = []
+
+    for numero_page in range(1, TOTAL_PAGES + 1):
+        print(f"On scrape la page {numero_page}/{TOTAL_PAGES}...")
+        url = f'https://books.toscrape.com/catalogue/page-{numero_page}.html'
+        articles = find_articles(url)
+
+        if not articles:
+            print("Plus d'articles, on s'arrête")
+            break
+
+
+        for article in articles:
+            # print(f"\n____article____: {extraire_livre(article, numero_page)}")
+            tous_les_produits.append(extraire_livre(article, numero_page))
+
+        time.sleep(0.5)
+
+    df = pd.DataFrame(tous_les_produits)
+    display_books(df)
+    # save_all_books(df)
+
+
+if __name__ == "__main__":
+    main()
